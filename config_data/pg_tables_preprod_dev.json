@@ -1,0 +1,192 @@
+[
+  {
+    "copy_type": "pg2pg",
+    "copy_id": "test1_copy",
+    "source_env": "PREPROD",
+    "target_env": "DEV",
+    "source_table": "gsd.test1",
+    "target_table": "gsd.test1",
+    "source_jdbc_connection_string": "jdbc:postgresql://pg-preprod.internal:5432/gsd_db",
+    "target_jdbc_connection_string": "jdbc:postgresql://pg-dev.internal:5432/gsd_db",
+    "mode": "append",
+    "columns": [
+      { "name": "id", "type": "bigint", "pii": false },
+      { "name": "customer_name", "type": "varchar(120)", "pii": true },
+      { "name": "email", "type": "varchar(255)", "pii": true },
+      { "name": "phone_number", "type": "varchar(20)", "pii": true },
+      { "name": "created_at", "type": "timestamp", "pii": false },
+      { "name": "status", "type": "varchar(20)", "pii": false }
+    ]
+  },
+  {
+    "copy_type": "pg2pg",
+    "copy_id": "test1_copy",
+    "source_env": "PREPROD",
+    "target_env": "DEV_env1",
+    "source_table": "gsd.test1",
+    "target_table": "gsd.test1",
+    "source_jdbc_connection_string": "jdbc:postgresql://pg-preprod.internal:5432/gsd_db",
+    "target_jdbc_connection_string": "jdbc:postgresql://pg-dev-env1.internal:5432/gsd_db",
+    "mode": "reload",
+    "columns": [
+      { "name": "id", "type": "bigint", "pii": false },
+      { "name": "customer_name", "type": "varchar(120)", "pii": true },
+      { "name": "email", "type": "varchar(255)", "pii": true },
+      { "name": "phone_number", "type": "varchar(20)", "pii": true },
+      { "name": "created_at", "type": "timestamp", "pii": false },
+      { "name": "status", "type": "varchar(20)", "pii": false }
+    ]
+  },
+  {
+    "copy_type": "pg2pg",
+    "copy_id": "test1_copy",
+    "source_env": "PREPROD",
+    "target_env": "DEV_env2",
+    "source_table": "gsd.test1",
+    "target_table": "gsd.test1",
+    "source_jdbc_connection_string": "jdbc:postgresql://pg-preprod.internal:5432/gsd_db",
+    "target_jdbc_connection_string": "jdbc:postgresql://pg-dev-env2.internal:5432/gsd_db",
+    "mode": "append",
+    "columns": [
+      { "name": "id", "type": "bigint", "pii": false },
+      { "name": "customer_name", "type": "varchar(120)", "pii": true },
+      { "name": "email", "type": "varchar(255)", "pii": true },
+      { "name": "phone_number", "type": "varchar(20)", "pii": true },
+      { "name": "created_at", "type": "timestamp", "pii": false },
+      { "name": "status", "type": "varchar(20)", "pii": false }
+    ]
+  },
+  {
+    "copy_type": "pg2pg",
+    "copy_id": "test1_copy",
+    "source_env": "PREPROD",
+    "target_env": "DEV_env3",
+    "source_table": "gsd.test1",
+    "target_table": "gsd.test1",
+    "source_jdbc_connection_string": "jdbc:postgresql://pg-preprod.internal:5432/gsd_db",
+    "target_jdbc_connection_string": "jdbc:postgresql://pg-dev-env3.internal:5432/gsd_db",
+    "mode": "append",
+    "columns": [
+      { "name": "id", "type": "bigint", "pii": false },
+      { "name": "customer_name", "type": "varchar(120)", "pii": true },
+      { "name": "email", "type": "varchar(255)", "pii": true },
+      { "name": "phone_number", "type": "varchar(20)", "pii": true },
+      { "name": "created_at", "type": "timestamp", "pii": false },
+      { "name": "status", "type": "varchar(20)", "pii": false }
+    ]
+  },
+  {
+    "copy_type": "pg2pg",
+    "copy_id": "test1_copy",
+    "source_env": "PREPROD",
+    "target_env": "DEV_env4",
+    "source_table": "gsd.test1",
+    "target_table": "gsd.test1",
+    "source_jdbc_connection_string": "jdbc:postgresql://pg-preprod.internal:5432/gsd_db",
+    "target_jdbc_connection_string": "jdbc:postgresql://pg-dev-env4.internal:5432/gsd_db",
+    "mode": "reload",
+    "columns": [
+      { "name": "id", "type": "bigint", "pii": false },
+      { "name": "customer_name", "type": "varchar(120)", "pii": true },
+      { "name": "email", "type": "varchar(255)", "pii": true },
+      { "name": "phone_number", "type": "varchar(20)", "pii": true },
+      { "name": "created_at", "type": "timestamp", "pii": false },
+      { "name": "status", "type": "varchar(20)", "pii": false }
+    ]
+  },
+  {
+    "copy_type": "pg2pg",
+    "copy_id": "orders_copy",
+    "source_env": "PREPROD",
+    "target_env": "DEV",
+    "source_table": "gsd.orders",
+    "target_table": "gsd.orders",
+    "source_jdbc_connection_string": "jdbc:postgresql://pg-preprod.internal:5432/gsd_db",
+    "target_jdbc_connection_string": "jdbc:postgresql://pg-dev.internal:5432/gsd_db",
+    "mode": "append",
+    "columns": [
+      { "name": "order_id", "type": "bigint", "pii": false },
+      { "name": "customer_id", "type": "bigint", "pii": false },
+      { "name": "order_total", "type": "numeric(12,2)", "pii": false },
+      { "name": "card_last4", "type": "varchar(4)", "pii": true },
+      { "name": "order_date", "type": "timestamp", "pii": false },
+      { "name": "shipping_address", "type": "text", "pii": true }
+    ]
+  },
+  {
+    "copy_type": "pg2pg",
+    "copy_id": "orders_copy",
+    "source_env": "PREPROD",
+    "target_env": "DEV_env1",
+    "source_table": "gsd.orders",
+    "target_table": "gsd.orders",
+    "source_jdbc_connection_string": "jdbc:postgresql://pg-preprod.internal:5432/gsd_db",
+    "target_jdbc_connection_string": "jdbc:postgresql://pg-dev-env1.internal:5432/gsd_db",
+    "mode": "append",
+    "columns": [
+      { "name": "order_id", "type": "bigint", "pii": false },
+      { "name": "customer_id", "type": "bigint", "pii": false },
+      { "name": "order_total", "type": "numeric(12,2)", "pii": false },
+      { "name": "card_last4", "type": "varchar(4)", "pii": true },
+      { "name": "order_date", "type": "timestamp", "pii": false },
+      { "name": "shipping_address", "type": "text", "pii": true }
+    ]
+  },
+  {
+    "copy_type": "pg2pg",
+    "copy_id": "orders_copy",
+    "source_env": "PREPROD",
+    "target_env": "DEV_env2",
+    "source_table": "gsd.orders",
+    "target_table": "gsd.orders",
+    "source_jdbc_connection_string": "jdbc:postgresql://pg-preprod.internal:5432/gsd_db",
+    "target_jdbc_connection_string": "jdbc:postgresql://pg-dev-env2.internal:5432/gsd_db",
+    "mode": "append",
+    "columns": [
+      { "name": "order_id", "type": "bigint", "pii": false },
+      { "name": "customer_id", "type": "bigint", "pii": false },
+      { "name": "order_total", "type": "numeric(12,2)", "pii": false },
+      { "name": "card_last4", "type": "varchar(4)", "pii": true },
+      { "name": "order_date", "type": "timestamp", "pii": false },
+      { "name": "shipping_address", "type": "text", "pii": true }
+    ]
+  },
+  {
+    "copy_type": "pg2pg",
+    "copy_id": "orders_copy",
+    "source_env": "PREPROD",
+    "target_env": "DEV_env3",
+    "source_table": "gsd.orders",
+    "target_table": "gsd.orders",
+    "source_jdbc_connection_string": "jdbc:postgresql://pg-preprod.internal:5432/gsd_db",
+    "target_jdbc_connection_string": "jdbc:postgresql://pg-dev-env3.internal:5432/gsd_db",
+    "mode": "append",
+    "columns": [
+      { "name": "order_id", "type": "bigint", "pii": false },
+      { "name": "customer_id", "type": "bigint", "pii": false },
+      { "name": "order_total", "type": "numeric(12,2)", "pii": false },
+      { "name": "card_last4", "type": "varchar(4)", "pii": true },
+      { "name": "order_date", "type": "timestamp", "pii": false },
+      { "name": "shipping_address", "type": "text", "pii": true }
+    ]
+  },
+  {
+    "copy_type": "pg2pg",
+    "copy_id": "orders_copy",
+    "source_env": "PREPROD",
+    "target_env": "DEV_env4",
+    "source_table": "gsd.orders",
+    "target_table": "gsd.orders",
+    "source_jdbc_connection_string": "jdbc:postgresql://pg-preprod.internal:5432/gsd_db",
+    "target_jdbc_connection_string": "jdbc:postgresql://pg-dev-env4.internal:5432/gsd_db",
+    "mode": "append",
+    "columns": [
+      { "name": "order_id", "type": "bigint", "pii": false },
+      { "name": "customer_id", "type": "bigint", "pii": false },
+      { "name": "order_total", "type": "numeric(12,2)", "pii": false },
+      { "name": "card_last4", "type": "varchar(4)", "pii": true },
+      { "name": "order_date", "type": "timestamp", "pii": false },
+      { "name": "shipping_address", "type": "text", "pii": true }
+    ]
+  }
+]

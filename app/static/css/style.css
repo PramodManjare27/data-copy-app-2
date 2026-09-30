@@ -1,0 +1,169 @@
+:root {
+  --brand-navy: #0f2440;
+  --brand-navy-dark: #0a1a30;
+  --brand-accent: #2f6feb;
+  --brand-accent-soft: #eaf1fd;
+  --surface: #f6f8fb;
+  --surface-card: #ffffff;
+  --border-soft: #e3e8ef;
+  --text-primary: #1a2433;
+  --text-muted: #627082;
+  --success: #1e9e6b;
+  --danger: #d64545;
+  --warning: #c98a1c;
+  --info: #2f6feb;
+}
+
+body {
+  background: var(--surface);
+  color: var(--text-primary);
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+}
+
+.navbar-brand-console {
+  background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-dark) 100%);
+}
+
+.navbar-brand-console .navbar-brand,
+.navbar-brand-console .nav-link {
+  color: #eef3fb !important;
+}
+
+.navbar-brand-console .nav-link:hover {
+  color: #ffffff !important;
+}
+
+.env-badge {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+.env-PROD { background: #fbe3e3; color: #a13333; }
+.env-PREPROD { background: #fdeecb; color: #8a5c0c; }
+.env-DEV, .env-DEV_env1, .env-DEV_env2, .env-DEV_env3, .env-DEV_env4 { background: #e2f3e8; color: #1e7048; }
+
+.card-surface {
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(15, 36, 64, 0.06);
+}
+
+.wizard-steps {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.75rem;
+}
+.wizard-step {
+  flex: 1;
+  text-align: center;
+  padding: 0.6rem 0.5rem;
+  border-radius: 8px;
+  background: #eef1f6;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid var(--border-soft);
+}
+.wizard-step.active {
+  background: var(--brand-accent-soft);
+  color: var(--brand-accent);
+  border-color: #c6dafb;
+}
+.wizard-step.done {
+  background: #e2f3e8;
+  color: var(--success);
+  border-color: #cdeadb;
+}
+
+.table-select-card {
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  background: var(--surface-card);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.table-select-card:has(.form-check-input:checked) {
+  border-color: var(--brand-accent);
+  box-shadow: 0 0 0 3px var(--brand-accent-soft);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.status-QUEUED { background: #eef1f6; color: var(--text-muted); }
+.status-IN_PROGRESS { background: #eaf1fd; color: var(--brand-accent); }
+.status-SUCCESS { background: #e2f3e8; color: var(--success); }
+.status-FAILED { background: #fbe3e3; color: var(--danger); }
+
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+}
+.status-IN_PROGRESS .status-dot { animation: pulse 1.2s infinite ease-in-out; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.progress { height: 8px; border-radius: 999px; background: #eef1f6; }
+.progress-bar { background: var(--brand-accent); }
+.status-SUCCESS + .progress .progress-bar, .progress-bar.bg-success { background: var(--success); }
+.progress-bar.bg-danger { background: var(--danger); }
+
+.summary-section-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.masking-chip {
+  display: inline-block;
+  background: #fdeecb;
+  color: #8a5c0c;
+  border-radius: 6px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+  margin: 0.1rem;
+}
+
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top left, #16345f 0%, var(--brand-navy-dark) 60%);
+}
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2.5rem 2.25rem;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+}
+
+code.jdbc-string {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  word-break: break-all;
+}

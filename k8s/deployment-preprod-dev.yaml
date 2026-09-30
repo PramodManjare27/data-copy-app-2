@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dcc-preprod-dev
+  namespace: data-copy-console
+  labels:
+    app: dcc-preprod-dev
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dcc-preprod-dev
+  template:
+    metadata:
+      labels:
+        app: dcc-preprod-dev
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: dcc-preprod-dev-sa
+      initContainers:
+        - name: seed-config
+          image: busybox:1.36
+          command: ["sh", "-c", "if [ -z \"$(ls -A /data)\" ]; then cp -n /seed/* /data/ 2>/dev/null || true; fi"]
+          volumeMounts:
+            - name: config-data
+              mountPath: /data
+            - name: config-seed
+              mountPath: /seed
+      containers:
+        - name: dcc
+          image: <YOUR_REGISTRY>/data-copy-console:latest
+          command: ["gunicorn", "--bind", "0.0.0.0:5002", "--workers", "4", "--timeout", "120", "run_preprod_dev:app"]
+          ports:
+            - containerPort: 5002
+          env:
+            - name: PORT
+              value: "5002"
+            - name: DATABRICKS_SIMULATE
+              value: "0"
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dcc-preprod-dev-secrets
+                  key: SECRET_KEY
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: dcc-preprod-dev-secrets
+                  key: DATABASE_URL
+            - name: MASKING_HMAC_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: dcc-preprod-dev-secrets
+                  key: MASKING_HMAC_SALT
+            - name: DATABRICKS_SP_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dcc-preprod-dev-secrets
+                  key: DATABRICKS_SP_CLIENT_SECRET
+            - name: PG_TABLES_JSON_PATH
+              value: "/app/config_data/pg_tables_preprod_dev.json"
+            - name: DATABRICKS_CONFIG_PATH
+              value: "/app/config_data/databricks_config.yaml"
+          volumeMounts:
+            - name: config-data
+              mountPath: /app/config_data
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /auth/login
+              port: 5002
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /auth/login
+              port: 5002
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+      volumes:
+        - name: config-data
+          persistentVolumeClaim:
+            claimName: dcc-preprod-dev-config-pvc
+        - name: config-seed
+          configMap:
+            name: dcc-preprod-dev-config-seed
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dcc-preprod-dev
+  namespace: data-copy-console
+spec:
+  selector:
+    app: dcc-preprod-dev
+  ports:
+    - port: 80
+      targetPort: 5002
+  type: ClusterIP

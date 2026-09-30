@@ -1,0 +1,219 @@
+{% extends "layout/base.html" %}
+{% block title %}Dashboard — {{ app_title }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div>
+    <h5 class="fw-bold mb-1">Data copy dashboard</h5>
+    <p class="text-muted small mb-0">{{ source_env }} sourced copies — live status and full audit trail.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <button id="refreshBtn" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+    </button>
+    <a href="{{ url_for('dashboard.new_request') }}" class="btn btn-primary btn-sm fw-semibold">
+      <i class="bi bi-plus-circle me-1"></i>New Copy Request
+    </a>
+  </div>
+</div>
+
+<div class="card-surface p-4 mb-4">
+  <div class="summary-section-title mb-3">In-progress activity</div>
+  <div id="activeContainer">
+    {% include "dashboard/_active_rows.html" %}
+  </div>
+</div>
+
+<div class="card-surface p-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="summary-section-title mb-0">Audit trail (most recent 50)</div>
+    <button id="clearFiltersBtn" class="btn btn-link btn-sm text-decoration-none">
+      <i class="bi bi-x-circle me-1"></i>Clear filters
+    </button>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle" id="auditTable">
+      <thead class="table-light">
+        <tr>
+          <th>Status</th>
+          <th>Type</th>
+          <th>Source</th>
+          <th>Target</th>
+          <th>Triggered by</th>
+          <th>Filter</th>
+          <th>Masked cols</th>
+          <th>Started</th>
+          <th>Duration</th>
+          <th>ETA</th>
+        </tr>
+        <tr id="auditFilterRow">
+          <th>
+            <select id="f_status" class="form-select form-select-sm">
+              <option value="">All</option>
+              <option value="QUEUED">Queued</option>
+              <option value="IN_PROGRESS">In progress</option>
+              <option value="SUCCESS">Success</option>
+              <option value="FAILED">Failed</option>
+            </select>
+          </th>
+          <th>
+            <select id="f_type" class="form-select form-select-sm">
+              <option value="">All</option>
+              <option value="pg2pg">pg2pg</option>
+              <option value="adls2adls">adls2adls</option>
+            </select>
+          </th>
+          <th><input type="text" id="f_source" class="form-control form-control-sm" placeholder="Search…"></th>
+          <th><input type="text" id="f_target" class="form-control form-control-sm" placeholder="Search…"></th>
+          <th><input type="text" id="f_triggered" class="form-control form-control-sm" placeholder="Search…"></th>
+          <th><input type="text" id="f_filter" class="form-control form-control-sm" placeholder="Search…"></th>
+          <th><input type="text" id="f_masked" class="form-control form-control-sm" placeholder="Search…"></th>
+          <th></th>
+          <th></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="auditBody">
+        {% include "dashboard/_audit_rows.html" %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function fmtTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleString();
+}
+function durationLabel(start, end) {
+  if (!start) return "—";
+  const s = new Date(start).getTime();
+  const e = end ? new Date(end).getTime() : Date.now();
+  const secs = Math.max(0, Math.round((e - s) / 1000));
+  if (secs < 60) return secs + "s";
+  return Math.floor(secs / 60) + "m " + (secs % 60) + "s";
+}
+function statusPill(status) {
+  return `<span class="status-pill status-${status}"><span class="status-dot"></span>${status.replace('_',' ')}</span>`;
+}
+function progressBar(pct, status) {
+  const cls = status === "FAILED" ? "bg-danger" : (status === "SUCCESS" ? "bg-success" : "");
+  return `<div class="progress"><div class="progress-bar ${cls}" style="width:${pct}%"></div></div>`;
+}
+
+function renderActive(rows) {
+  const container = document.getElementById("activeContainer");
+  if (!rows.length) {
+    container.innerHTML = '<div class="empty-state py-3"><i class="bi bi-check2-circle" style="font-size:1.5rem;"></i><p class="mb-0 mt-2">No data copy activity in progress right now.</p></div>';
+    return;
+  }
+  container.innerHTML = rows.map(r => `
+    <div class="border rounded p-3 mb-2">
+      <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
+        <div>
+          ${statusPill(r.status)}
+          <span class="fw-semibold ms-2">${r.copy_type === 'pg2pg' ? r.source_object : r.copy_id || r.source_object}</span>
+          <span class="text-muted small ms-1">${r.source_env} → ${r.target_env}</span>
+        </div>
+        <span class="text-muted small">triggered by ${r.triggered_by} · ETA ${r.expected_eta_seconds ? r.expected_eta_seconds + 's' : '—'}</span>
+      </div>
+      ${progressBar(r.progress_pct, r.status)}
+    </div>
+  `).join("");
+}
+
+function maskedColumnsText(r) {
+  try {
+    const parsed = JSON.parse(r.masked_columns || "[]");
+    return (parsed || []).join(" ");
+  } catch (e) {
+    return "";
+  }
+}
+
+function getColumnFilters() {
+  return {
+    status: document.getElementById("f_status").value,
+    type: document.getElementById("f_type").value,
+    source: document.getElementById("f_source").value.trim().toLowerCase(),
+    target: document.getElementById("f_target").value.trim().toLowerCase(),
+    triggered: document.getElementById("f_triggered").value.trim().toLowerCase(),
+    filterText: document.getElementById("f_filter").value.trim().toLowerCase(),
+    masked: document.getElementById("f_masked").value.trim().toLowerCase(),
+  };
+}
+
+function renderAudit(rows) {
+  const f = getColumnFilters();
+  const filtered = rows.filter(r => {
+    if (f.status && r.status !== f.status) return false;
+    if (f.type && r.copy_type !== f.type) return false;
+    if (f.source && !(r.source_object || "").toLowerCase().includes(f.source)) return false;
+    if (f.target && !(r.target_object || "").toLowerCase().includes(f.target)) return false;
+    if (f.triggered && !(r.triggered_by || "").toLowerCase().includes(f.triggered)) return false;
+    if (f.filterText && !(r.filter_condition || "").toLowerCase().includes(f.filterText)) return false;
+    if (f.masked && !maskedColumnsText(r).toLowerCase().includes(f.masked)) return false;
+    return true;
+  });
+  const body = document.getElementById("auditBody");
+  if (!filtered.length) {
+    body.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">No audit entries match your filters.</td></tr>';
+    return;
+  }
+  body.innerHTML = filtered.map(r => {
+    let masked = [];
+    try { masked = JSON.parse(r.masked_columns || "[]"); } catch(e) {}
+    const maskedHtml = (masked && masked.length) ? masked.map(c => `<span class="masking-chip">${c}</span>`).join("") : "—";
+    return `
+    <tr>
+      <td>${statusPill(r.status)}${progressBar(r.progress_pct, r.status)}</td>
+      <td><span class="badge bg-light text-dark border">${r.copy_type}${r.adls_category ? " / " + r.adls_category : ""}</span></td>
+      <td class="small">${r.source_object}</td>
+      <td class="small">${r.target_object}</td>
+      <td class="small">${r.triggered_by}</td>
+      <td class="small">${r.filter_condition ? `<code>${r.filter_condition}</code>` : "—"}</td>
+      <td>${maskedHtml}</td>
+      <td class="small">${fmtTime(r.start_time)}</td>
+      <td class="small">${durationLabel(r.start_time, r.end_time)}</td>
+      <td class="small">${r.expected_eta_seconds ? r.expected_eta_seconds + "s" : "—"}</td>
+    </tr>`;
+  }).join("");
+}
+
+let lastRecent = [];
+
+async function refreshDashboard() {
+  const resp = await fetch("{{ url_for('dashboard.api_audit_logs') }}");
+  const data = await resp.json();
+  renderActive(data.active);
+  lastRecent = data.recent;
+  renderAudit(lastRecent);
+}
+
+document.getElementById("refreshBtn").addEventListener("click", refreshDashboard);
+
+const filterIds = ["f_status", "f_type", "f_source", "f_target", "f_triggered", "f_filter", "f_masked"];
+filterIds.forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener(el.tagName === "SELECT" ? "change" : "input", () => renderAudit(lastRecent));
+});
+
+document.getElementById("clearFiltersBtn").addEventListener("click", () => {
+  filterIds.forEach(id => { document.getElementById(id).value = ""; });
+  renderAudit(lastRecent);
+});
+
+// Light auto-poll only while something is active, so the dashboard feels live.
+setInterval(async () => {
+  if (document.getElementById("activeContainer").querySelector(".status-IN_PROGRESS, .status-QUEUED")) {
+    await refreshDashboard();
+  }
+}, 3000);
+
+// Populate lastRecent immediately so filters work right away, not only after
+// the first manual refresh or the first active-job poll tick.
+refreshDashboard();
+</script>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% if not active %}
+<div class="empty-state py-3">
+  <i class="bi bi-check2-circle" style="font-size:1.5rem;"></i>
+  <p class="mb-0 mt-2">No data copy activity in progress right now.</p>
+</div>
+{% else %}
+{% for r in active %}
+<div class="border rounded p-3 mb-2">
+  <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
+    <div>
+      <span class="status-pill status-{{ r.status }}"><span class="status-dot"></span>{{ r.status.replace('_',' ') }}</span>
+      <span class="fw-semibold ms-2">{{ r.source_object }}</span>
+      <span class="text-muted small ms-1">{{ r.source_env }} → {{ r.target_env }}</span>
+    </div>
+    <span class="text-muted small">triggered by {{ r.triggered_by }} · ETA {{ r.expected_eta_seconds ~ 's' if r.expected_eta_seconds else '—' }}</span>
+  </div>
+  <div class="progress">
+    <div class="progress-bar {{ 'bg-danger' if r.status == 'FAILED' else ('bg-success' if r.status == 'SUCCESS' else '') }}" style="width:{{ r.progress_pct }}%"></div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}

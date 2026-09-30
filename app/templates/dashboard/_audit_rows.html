@@ -1,0 +1,28 @@
+{% if not recent %}
+<tr><td colspan="10" class="text-center text-muted py-4">No data copy requests have been submitted yet.</td></tr>
+{% else %}
+{% for r in recent %}
+<tr>
+  <td>
+    <span class="status-pill status-{{ r.status }}"><span class="status-dot"></span>{{ r.status.replace('_',' ') }}</span>
+    <div class="progress mt-1">
+      <div class="progress-bar {{ 'bg-danger' if r.status == 'FAILED' else ('bg-success' if r.status == 'SUCCESS' else '') }}" style="width:{{ r.progress_pct }}%"></div>
+    </div>
+  </td>
+  <td><span class="badge bg-light text-dark border">{{ r.copy_type }}{{ ' / ' ~ r.adls_category if r.adls_category else '' }}</span></td>
+  <td class="small">{{ r.source_object }}</td>
+  <td class="small">{{ r.target_object }}</td>
+  <td class="small">{{ r.triggered_by }}</td>
+  <td class="small">{% if r.filter_condition %}<code>{{ r.filter_condition }}</code>{% else %}—{% endif %}</td>
+  <td>
+    {% set masked = r.masked_columns | fromjson %}
+    {% if masked %}
+      {% for c in masked %}<span class="masking-chip">{{ c }}</span>{% endfor %}
+    {% else %}—{% endif %}
+  </td>
+  <td class="small">{{ r.start_time or '—' }}</td>
+  <td class="small">{{ r.end_time or ('running…' if r.status == 'IN_PROGRESS' else '—') }}</td>
+  <td class="small">{{ (r.expected_eta_seconds ~ 's') if r.expected_eta_seconds else '—' }}</td>
+</tr>
+{% endfor %}
+{% endif %}

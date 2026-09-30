@@ -1,0 +1,39 @@
+# Exposes both consoles under distinct hostnames through a shared ingress
+# controller (nginx-ingress assumed). Adjust host names / TLS secret names to
+# your cluster's DNS and cert-manager setup.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dcc-ingress
+  namespace: data-copy-console
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - data-copy-prod-preprod.internal.example.com
+        - data-copy-preprod-dev.internal.example.com
+      secretName: dcc-tls
+  rules:
+    - host: data-copy-prod-preprod.internal.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dcc-prod-preprod
+                port:
+                  number: 80
+    - host: data-copy-preprod-dev.internal.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dcc-preprod-dev
+                port:
+                  number: 80

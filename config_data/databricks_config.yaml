@@ -1,0 +1,60 @@
+# Databricks workspace + auth configuration used to submit the Spark copy jobs.
+# Kept separate from application config so it can be mounted from a k8s Secret
+# (see docs/DEVOPS_GUIDE.md) instead of being baked into the image.
+
+workspace_url: "https://adb-xxxxxxxxxxxxxxxx.xx.azuredatabricks.net"
+
+# uami = User-Assigned Managed Identity (preferred when this app runs on
+#        Azure/AKS - no client secret to rotate or leak).
+# sp   = Service Principal / OAuth2 client-credentials grant.
+auth_mode: "uami"
+
+managed_identity:
+  client_id: "<user-assigned-managed-identity-client-id>"
+  resource: "2ff814a6-3304-4ab8-85cb-cd0e6f879c1d"  # Azure Databricks resource id
+
+service_principal:
+  tenant_id: "<azure-ad-tenant-id>"
+  client_id: "<service-principal-client-id>"
+  # Never store the secret here in plaintext. In k8s this is injected as the
+  # env var DATABRICKS_SP_CLIENT_SECRET from a Secret; locally use a .env file
+  # that is git-ignored.
+  client_secret_env_var: "DATABRICKS_SP_CLIENT_SECRET"
+
+job_defaults:
+  new_cluster:
+    spark_version: "14.3.x-scala2.12"
+    node_type_id: "Standard_D8s_v5"
+    driver_node_type_id: "Standard_D8s_v5"
+    autoscale:
+      min_workers: 2
+      max_workers: 8
+    spark_conf:
+      spark.sql.shuffle.partitions: "auto"
+      spark.databricks.delta.optimizeWrite.enabled: "true"
+      spark.databricks.delta.autoCompact.enabled: "true"
+      spark.sql.adaptive.enabled: "true"
+      spark.sql.adaptive.coalescePartitions.enabled: "true"
+    custom_tags:
+      workload: "data-copy-console"
+  timeout_seconds: 3600
+  max_retries: 1
+
+# Performance-tuning defaults applied by the Spark copy job itself
+# (see docs/DESIGN.md, "Spark Job Performance Tuning").
+performance_tuning:
+  pg2pg_jdbc:
+    fetch_size: 10000
+    batch_size: 10000
+    num_partitions: 8
+    partition_column_strategy: "primary_key_or_serial_column"
+    isolation_level: "READ_COMMITTED"
+  adls2adls:
+    target_file_max_size_mb: 256
+    optimize_write: true
+    auto_compact: true
+    broadcast_join_threshold_mb: 64
+
+notebook_paths:
+  pg2pg: "/Shared/data-copy-console/jobs/pg2pg_copy_job"
+  adls2adls: "/Shared/data-copy-console/jobs/adls2adls_copy_job"

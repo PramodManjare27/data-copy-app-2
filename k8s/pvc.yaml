@@ -1,0 +1,35 @@
+# Config files (pg_tables*.json, adls_*.conf) are edited at runtime via the
+# in-app Admin screen (app/admin/routes.py writes to disk). A ConfigMap volume
+# mount is READ-ONLY inside a pod, so it cannot back that feature directly.
+#
+# Pattern used here: a small ReadWriteMany PVC holds the live, editable config
+# files; a ConfigMap (built from config_data/ in this repo, i.e. GitOps'd) is
+# mounted read-only alongside it purely as seed data. An initContainer copies
+# the seed into the PVC only the first time (empty-dir check), so subsequent
+# admin edits persist across pod restarts/rollouts without being clobbered.
+#
+# Requires a ReadWriteMany-capable StorageClass (e.g. Azure Files CSI driver:
+# azurefile-csi-premium, or NFS). Swap storageClassName for your cluster.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dcc-prod-preprod-config-pvc
+  namespace: data-copy-console
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: azurefile-csi-premium
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dcc-preprod-dev-config-pvc
+  namespace: data-copy-console
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: azurefile-csi-premium
+  resources:
+    requests:
+      storage: 1Gi

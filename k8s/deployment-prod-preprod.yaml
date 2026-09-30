@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dcc-prod-preprod
+  namespace: data-copy-console
+  labels:
+    app: dcc-prod-preprod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dcc-prod-preprod
+  template:
+    metadata:
+      labels:
+        app: dcc-prod-preprod
+        azure.workload.identity/use: "true"
+    spec:
+      # Bind this pod's identity to the Azure User-Assigned Managed Identity
+      # used for Databricks auth (auth_mode: uami in databricks_config.yaml).
+      # Requires the Azure Workload Identity webhook to be installed.
+      serviceAccountName: dcc-prod-preprod-sa
+      initContainers:
+        # Seeds the writable PVC from the GitOps'd ConfigMap on first boot
+        # only (won't overwrite admin-made edits on subsequent rollouts).
+        - name: seed-config
+          image: busybox:1.36
+          command: ["sh", "-c", "if [ -z \"$(ls -A /data)\" ]; then cp -n /seed/* /data/ 2>/dev/null || true; fi"]
+          volumeMounts:
+            - name: config-data
+              mountPath: /data
+            - name: config-seed
+              mountPath: /seed
+      containers:
+        - name: dcc
+          image: <YOUR_REGISTRY>/data-copy-console:latest
+          command: ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "4", "--timeout", "120", "run_prod_preprod:app"]
+          ports:
+            - containerPort: 5001
+          env:
+            - name: PORT
+              value: "5001"
+            - name: DATABRICKS_SIMULATE
+              value: "0"
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dcc-prod-preprod-secrets
+                  key: SECRET_KEY
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: dcc-prod-preprod-secrets
+                  key: DATABASE_URL
+            - name: MASKING_HMAC_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: dcc-prod-preprod-secrets
+                  key: MASKING_HMAC_SALT
+            - name: DATABRICKS_SP_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dcc-prod-preprod-secrets
+                  key: DATABRICKS_SP_CLIENT_SECRET
+            - name: PG_TABLES_JSON_PATH
+              value: "/app/config_data/pg_tables_prod_preprod.json"
+            - name: DATABRICKS_CONFIG_PATH
+              value: "/app/config_data/databricks_config.yaml"
+          volumeMounts:
+            - name: config-data
+              mountPath: /app/config_data
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /auth/login
+              port: 5001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /auth/login
+              port: 5001
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+      volumes:
+        - name: config-data
+          persistentVolumeClaim:
+            claimName: dcc-prod-preprod-config-pvc
+        - name: config-seed
+          configMap:
+            name: dcc-prod-preprod-config-seed
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dcc-prod-preprod
+  namespace: data-copy-console
+spec:
+  selector:
+    app: dcc-prod-preprod
+  ports:
+    - port: 80
+      targetPort: 5001
+  type: ClusterIP

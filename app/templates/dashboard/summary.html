@@ -1,0 +1,105 @@
+{% extends "layout/base.html" %}
+{% block title %}Review &amp; Submit — {{ app_title }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+    <div class="wizard-steps">
+      <div class="wizard-step done">1. Target Environment</div>
+      <div class="wizard-step done">2. PG2PG</div>
+      <div class="wizard-step done">3. ADLS2ADLS</div>
+      <div class="wizard-step active">4. Review &amp; Submit</div>
+    </div>
+
+    <div class="mb-3">
+      <h5 class="fw-bold mb-1">Review your data copy request</h5>
+      <p class="text-muted small mb-0">
+        {{ source_env }} → <span class="env-badge env-{{ draft.target_env }}">{{ draft.target_env }}</span>
+        — confirm the details below before this is submitted to Databricks.
+      </p>
+    </div>
+
+    {% if draft.pg_items %}
+    <div class="card-surface p-4 mb-3">
+      <div class="summary-section-title"><i class="bi bi-table me-1"></i>PG2PG — {{ draft.pg_items|length }} table(s)</div>
+      {% for item in draft.pg_items %}
+      <div class="border-bottom py-3">
+        <div class="d-flex justify-content-between flex-wrap gap-2">
+          <div>
+            <span class="fw-semibold">{{ item.source_table }}</span>
+            <span class="text-muted">→</span>
+            <span class="fw-semibold">{{ item.target_table }}</span>
+            {% if item.target_table_renamed %}<span class="badge bg-info-subtle text-info-emphasis ms-1">renamed — new table will be created</span>{% endif %}
+          </div>
+          {% if item.mode %}<span class="badge bg-light text-dark border">mode: {{ item.mode }}</span>{% endif %}
+        </div>
+        <div class="small text-muted mt-1">copy_id: {{ item.copy_id }}</div>
+        {% if item.filter_condition %}
+        <div class="small mt-1"><i class="bi bi-funnel me-1"></i>Filter: <code>{{ item.filter_condition }}</code></div>
+        {% endif %}
+        {% if item.masked_columns %}
+        <div class="small mt-1">
+          <i class="bi bi-eye-slash me-1"></i>Masked columns ({{ item.masking_algorithm }}):
+          {% for c in item.masked_columns %}<span class="masking-chip">{{ c }}</span>{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+      <a href="{{ url_for('pg2pg.configure') }}" class="btn btn-sm btn-outline-secondary mt-3">
+        <i class="bi bi-pencil me-1"></i>Edit PG2PG selection
+      </a>
+    </div>
+    {% endif %}
+
+    {% if draft.adls_items %}
+    <div class="card-surface p-4 mb-3">
+      <div class="summary-section-title"><i class="bi bi-hdd-network me-1"></i>ADLS2ADLS — {{ draft.adls_items|length }} location(s)</div>
+      {% for item in draft.adls_items %}
+      <div class="border-bottom py-3">
+        <div class="d-flex justify-content-between flex-wrap gap-2">
+          <div>
+            <span class="badge bg-secondary text-uppercase me-2">{{ item.category }}</span>
+            <span class="fw-semibold">{{ item.source_lens_name }}</span>
+          </div>
+          <span class="badge bg-light text-dark border">clean-up: {{ item.target_clean_up }}</span>
+        </div>
+        <div class="small text-muted mt-1">
+          <code class="jdbc-string">src: {{ item.source_adls_location }}</code><br>
+          <code class="jdbc-string">tgt: {{ item.target_adls_location }}</code>
+        </div>
+        {% if item.partitioned_column %}
+        <div class="small mt-1"><i class="bi bi-diagram-3 me-1"></i>Partition: <code>{{ item.partitioned_column }}</code> ({{ item.partition_column_format }})</div>
+        {% endif %}
+        {% if item.additional_filter %}
+        <div class="small mt-1"><i class="bi bi-funnel me-1"></i>Additional filter: <code>{{ item.additional_filter }}</code></div>
+        {% endif %}
+        {% if item.masking_columns %}
+        <div class="small mt-1">
+          <i class="bi bi-eye-slash me-1"></i>Masked columns ({{ item.masking_algorithm }}):
+          {% for c in item.masking_columns %}<span class="masking-chip">{{ c }}</span>{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+      <a href="{{ url_for('adls2adls.configure') }}" class="btn btn-sm btn-outline-secondary mt-3">
+        <i class="bi bi-pencil me-1"></i>Edit ADLS2ADLS selection
+      </a>
+    </div>
+    {% endif %}
+
+    <div class="card-surface p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <a href="{{ url_for('adls2adls.configure') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back
+      </a>
+      <form method="post" action="{{ url_for('dashboard.submit') }}" class="d-flex align-items-center gap-3 flex-wrap">
+        <span class="text-muted small">
+          Submitting will create {{ (draft.pg_items|length) + (draft.adls_items|length) }} audit log entr{{ 'y' if (draft.pg_items|length + draft.adls_items|length) == 1 else 'ies' }}
+          and trigger a Spark job on Databricks for each.
+        </span>
+        <button type="submit" class="btn btn-success fw-semibold px-4">
+          <i class="bi bi-check2-circle me-1"></i>Confirm &amp; Submit
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

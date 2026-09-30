@@ -1,0 +1,158 @@
+{% extends "layout/base.html" %}
+{% block title %}ADLS2ADLS — {{ app_title }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+    <div class="wizard-steps">
+      <div class="wizard-step done">1. Target Environment</div>
+      <div class="wizard-step done">2. PG2PG</div>
+      <div class="wizard-step active">3. ADLS2ADLS</div>
+      <div class="wizard-step">4. Review &amp; Submit</div>
+    </div>
+
+    <div class="mb-3">
+      <h5 class="fw-bold mb-1">ADLS Gen2 location copy (ADLS2ADLS)</h5>
+      <p class="text-muted small mb-0">
+        Source <span class="env-badge env-{{ source_env }}">{{ source_env }}</span>
+        → Target <span class="env-badge env-{{ target_env }}">{{ target_env }}</span>.
+        Optional — you can skip this if you already configured PG2PG (or vice versa).
+      </p>
+    </div>
+
+    <div class="mb-3">
+      <div class="input-group">
+        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+        <input type="text" id="adlsSearchInput" class="form-control" placeholder="Search by lens name…">
+      </div>
+    </div>
+
+    <form method="post">
+      <ul class="nav nav-tabs mb-3">
+        {% for cat, label in category_labels.items() %}
+        <li class="nav-item">
+          <button class="nav-link {% if loop.first %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#tab-{{ cat }}" type="button">
+            {{ label }}
+            <span class="badge bg-secondary ms-1" id="count-{{ cat }}">{{ entries_by_category[cat]|length }}</span>
+          </button>
+        </li>
+        {% endfor %}
+      </ul>
+
+      <div class="tab-content mb-3">
+        {% for cat, label in category_labels.items() %}
+        <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="tab-{{ cat }}">
+          {% set entries = entries_by_category[cat] %}
+          {% if not entries %}
+          <div class="card-surface empty-state">
+            <i class="bi bi-hdd-network" style="font-size:1.75rem;"></i>
+            <p class="mt-2 mb-0">No {{ label|lower }} entries configured for target <strong>{{ target_env }}</strong>.</p>
+          </div>
+          {% endif %}
+          {% for e in entries %}
+          {% set field_prefix = cat ~ '_' ~ loop.index0 %}
+          {% set filters = e.get('customfilters', {}) %}
+          {% set mcols = filters.get('masking_columns', []) %}
+          {% set ex = existing_by_key.get((cat, e.get('source-adls-location'))) %}
+          <div class="table-select-card" data-category="{{ cat }}" data-search="{{ (e.get('source-lens-name') or '')|lower }}">
+            <div class="d-flex align-items-start gap-3">
+              <input class="form-check-input mt-1" type="checkbox" name="include_{{ field_prefix }}" id="inc_{{ field_prefix }}" {% if ex %}checked{% endif %}
+                     onchange="document.getElementById('details_{{ field_prefix }}').classList.toggle('d-none', !this.checked)">
+              <div class="flex-grow-1">
+                <label class="form-check-label" for="inc_{{ field_prefix }}">
+                  <span class="fw-semibold">{{ e.get('source-lens-name') }}</span>
+                  <span class="badge bg-light text-dark border ms-2">{{ e.get('source-format') }} → {{ e.get('target-format') }}</span>
+                </label>
+                <div class="small text-muted">
+                  <code class="jdbc-string">src: {{ e.get('source-adls-location') }}</code><br>
+                  <code class="jdbc-string">tgt: {{ e.get('target-adls-location') }}</code>
+                </div>
+
+                <div id="details_{{ field_prefix }}" class="{{ '' if ex else 'd-none' }} mt-3">
+                  <div class="row g-3">
+                    <div class="col-md-4">
+                      <label class="form-label small fw-semibold">Target clean-up mode</label>
+                      {% set current_cleanup = ex.target_clean_up if ex else e.get('target-clean-up') %}
+                      <select class="form-select form-select-sm" name="cleanup_{{ field_prefix }}">
+                        <option value="append" {% if current_cleanup == 'append' %}selected{% endif %}>Append</option>
+                        <option value="overwrite" {% if current_cleanup == 'overwrite' %}selected{% endif %}>Overwrite</option>
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small fw-semibold">Partition column</label>
+                      <input type="text" class="form-control form-control-sm" name="partcol_{{ field_prefix }}" value="{{ ex.partitioned_column if ex else filters.get('partitioned_column', '') }}">
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small fw-semibold">Partition format</label>
+                      <input type="text" class="form-control form-control-sm" name="partfmt_{{ field_prefix }}" value="{{ ex.partition_column_format if ex else filters.get('partition_column_format', '') }}">
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small fw-semibold">Additional filter for this run (logged only, not saved to .conf)</label>
+                      <input type="text" class="form-control form-control-sm" name="extrafilter_{{ field_prefix }}" value="{{ ex.additional_filter if ex else '' }}" placeholder="e.g. region = 'EU'">
+                    </div>
+                  </div>
+
+                  {% if mcols %}
+                  <div class="mt-3">
+                    <span class="small fw-semibold d-block mb-1">Masking columns (from config — applied automatically):</span>
+                    {% for c in mcols %}<span class="masking-chip">{{ c }}</span>{% endfor %}
+                    <div class="form-text">Algorithm: <strong>SHA-256 Hash</strong> (irreversible, deterministic — see Admin → masking reference).</div>
+                  </div>
+                  {% else %}
+                  <div class="mt-3 text-muted small"><i class="bi bi-info-circle me-1"></i>No masking columns configured for this location.</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          <div class="empty-state d-none adls-no-results" data-category-empty="{{ cat }}">
+            <i class="bi bi-search" style="font-size:1.5rem;"></i>
+            <p class="mt-2 mb-0">No {{ label|lower }} locations match your search.</p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="card-surface p-3 d-flex justify-content-between align-items-center">
+        <a href="{{ url_for('pg2pg.configure') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+        <div class="d-flex gap-2">
+          <button type="submit" name="skip" value="1" class="btn btn-outline-secondary">Skip ADLS2ADLS</button>
+          <button type="submit" class="btn btn-primary fw-semibold">Review request <i class="bi bi-arrow-right ms-1"></i></button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const input = document.getElementById("adlsSearchInput");
+  if (!input) return;
+  const cards = Array.from(document.querySelectorAll(".table-select-card[data-category]"));
+  const categories = {{ category_labels.keys()|list|tojson }};
+
+  input.addEventListener("input", function () {
+    const term = this.value.trim().toLowerCase();
+    categories.forEach(function (cat) {
+      let visibleCount = 0;
+      cards.filter(c => c.dataset.category === cat).forEach(function (card) {
+        const match = !term || (card.dataset.search || "").includes(term);
+        card.classList.toggle("d-none", !match);
+        if (match) visibleCount++;
+      });
+      const countEl = document.getElementById("count-" + cat);
+      if (countEl) countEl.textContent = visibleCount;
+      const noResultsEl = document.querySelector('[data-category-empty="' + cat + '"]');
+      if (noResultsEl) {
+        const hasAnyCards = cards.some(c => c.dataset.category === cat);
+        noResultsEl.classList.toggle("d-none", !(term && hasAnyCards && visibleCount === 0));
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

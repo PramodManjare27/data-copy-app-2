@@ -1,0 +1,30 @@
+{% extends "layout/base.html" %}
+{% block title %}Admin — {{ app_title }}{% endblock %}
+{% block content %}
+<h5 class="fw-bold mb-1">Config administration</h5>
+<p class="text-muted small mb-4">
+  Edit the source-of-truth JSON files that drive the PG2PG and ADLS2ADLS wizards for this app instance
+  (<strong>{{ app_mode }}</strong>). Changes take effect immediately for new copy requests.
+</p>
+
+<div class="card-surface p-0">
+  <table class="table mb-0 align-middle">
+    <thead class="table-light">
+      <tr><th>Config</th><th>File path</th><th class="text-end">Action</th></tr>
+    </thead>
+    <tbody>
+      {% for key, entry in registry.items() %}
+      <tr>
+        <td class="fw-semibold">{{ entry.label }}</td>
+        <td class="small text-muted">{{ entry.path }}</td>
+        <td class="text-end">
+          <a href="{{ url_for('admin.edit_config', key=key) }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-pencil-square me-1"></i>Edit
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

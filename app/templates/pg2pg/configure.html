@@ -1,0 +1,162 @@
+{% extends "layout/base.html" %}
+{% block title %}PG2PG — {{ app_title }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+    <div class="wizard-steps">
+      <div class="wizard-step done">1. Target Environment</div>
+      <div class="wizard-step active">2. PG2PG</div>
+      <div class="wizard-step">3. ADLS2ADLS</div>
+      <div class="wizard-step">4. Review &amp; Submit</div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h5 class="fw-bold mb-1">PostgreSQL table copy (PG2PG)</h5>
+        <p class="text-muted small mb-0">
+          Source <span class="env-badge env-{{ source_env }}">{{ source_env }}</span>
+          → Target <span class="env-badge env-{{ target_env }}">{{ target_env }}</span>.
+          Optional — you can skip this and configure ADLS2ADLS only.
+        </p>
+      </div>
+    </div>
+
+    {% if not tables %}
+    <div class="card-surface empty-state">
+      <i class="bi bi-table" style="font-size:2rem;"></i>
+      <p class="mt-2 mb-0">No PG2PG table definitions are configured for target <strong>{{ target_env }}</strong>.</p>
+      <p class="small">An admin can add entries under Admin → pg_tables.json.</p>
+    </div>
+    <div class="d-flex justify-content-between mt-3">
+      <a href="{{ back_url }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>{{ back_label }}
+      </a>
+      <form method="post">
+        <input type="hidden" name="skip" value="1">
+        <button type="submit" class="btn btn-primary">Continue to ADLS2ADLS <i class="bi bi-arrow-right ms-1"></i></button>
+      </form>
+    </div>
+    {% else %}
+    <div class="mb-3">
+      <div class="input-group">
+        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+        <input type="text" id="pgSearchInput" class="form-control" placeholder="Search by copy_id or table name…">
+      </div>
+    </div>
+    <form method="post" id="pg2pgForm">
+      {% for t in tables %}
+      {% set t_idx = loop.index0 %}
+      {% set ex = existing_by_copy_id.get(t.copy_id) %}
+      <div class="table-select-card" data-search="{{ (t.copy_id ~ ' ' ~ t.source_table ~ ' ' ~ t.target_table)|lower }}">
+        <div class="d-flex align-items-start gap-3">
+          <input class="form-check-input mt-1" type="checkbox" name="include_{{ t_idx }}" id="inc_{{ t_idx }}" {% if ex %}checked{% endif %} onchange="document.getElementById('details_{{ t_idx }}').classList.toggle('d-none', !this.checked)">
+          <div class="flex-grow-1">
+            <label class="form-check-label" for="inc_{{ t_idx }}">
+              <span class="fw-semibold">{{ t.source_table }}</span>
+              <span class="text-muted">→</span>
+              <span class="fw-semibold">{{ t.target_table }}</span>
+              <span class="badge bg-light text-dark border ms-2">copy_id: {{ t.copy_id }}</span>
+            </label>
+            <div class="small text-muted">
+              <code class="jdbc-string">src: {{ t.source_jdbc_connection_string }}</code><br>
+              <code class="jdbc-string">tgt: {{ t.target_jdbc_connection_string }}</code>
+            </div>
+
+            <div id="details_{{ t_idx }}" class="{{ '' if ex else 'd-none' }} mt-3">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Target table name</label>
+                  <input type="text" class="form-control form-control-sm" name="target_table_{{ t_idx }}" value="{{ ex.target_table if ex else t.target_table }}">
+                  <div class="form-text">Renaming forces mode = append and creates a new table with the source schema.</div>
+                </div>
+                {% if is_preprod_dev %}
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Mode</label>
+                  {% set current_mode = ex.mode if ex else t.mode %}
+                  <select class="form-select form-select-sm" name="mode_{{ t_idx }}">
+                    <option value="append" {% if current_mode == 'append' %}selected{% endif %}>Append</option>
+                    <option value="reload" {% if current_mode == 'reload' %}selected{% endif %}>Reload (delete matching rows, then copy)</option>
+                  </select>
+                </div>
+                {% endif %}
+                <div class="col-12">
+                  <label class="form-label small fw-semibold">Custom filter (applied to source, logged in audit trail)</label>
+                  <input type="text" class="form-control form-control-sm" name="filter_{{ t_idx }}" value="{{ ex.filter_condition if ex else '' }}" placeholder="e.g. created_at >= '2026-01-01' AND status = 'ACTIVE'">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Masking algorithm (applied to columns checked below)</label>
+                  <select class="form-select form-select-sm" name="mask_algo_{{ t_idx }}">
+                    {% for key, mlabel in mask_algorithms %}
+                    <option value="{{ key }}" {% if ex and ex.masking_algorithm == key %}selected{% endif %}>{{ mlabel }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+
+              <div class="mt-3">
+                <label class="form-label small fw-semibold mb-2">Columns — select any to mask (CII/PII)</label>
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle">
+                    <thead class="table-light">
+                      <tr><th style="width:40px;">Mask</th><th>Column</th><th>Data type</th><th>Flagged PII</th></tr>
+                    </thead>
+                    <tbody>
+                      {% for col in t.columns %}
+                      {% set col_checked = (col.name in ex.masked_columns) if ex else col.pii %}
+                      <tr>
+                        <td><input class="form-check-input" type="checkbox" name="mask_col_{{ t_idx }}" value="{{ col.name }}" {% if col_checked %}checked{% endif %}></td>
+                        <td>{{ col.name }}</td>
+                        <td><code>{{ col.type }}</code></td>
+                        <td>{% if col.pii %}<span class="badge bg-warning-subtle text-warning-emphasis">PII</span>{% endif %}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      <div id="pgNoResults" class="card-surface empty-state d-none">
+        <i class="bi bi-search" style="font-size:1.5rem;"></i>
+        <p class="mt-2 mb-0">No tables match your search.</p>
+      </div>
+
+      <div class="card-surface p-3 d-flex justify-content-between align-items-center">
+        <a href="{{ url_for('dashboard.new_request') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+        <div class="d-flex gap-2">
+          <button type="submit" name="skip" value="1" class="btn btn-outline-secondary">Skip PG2PG</button>
+          <button type="submit" class="btn btn-primary fw-semibold">Continue <i class="bi bi-arrow-right ms-1"></i></button>
+        </div>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const input = document.getElementById("pgSearchInput");
+  if (!input) return;
+  const cards = Array.from(document.querySelectorAll("#pg2pgForm .table-select-card"));
+  const noResults = document.getElementById("pgNoResults");
+  input.addEventListener("input", function () {
+    const term = this.value.trim().toLowerCase();
+    let visibleCount = 0;
+    cards.forEach(function (card) {
+      const match = !term || (card.dataset.search || "").includes(term);
+      card.classList.toggle("d-none", !match);
+      if (match) visibleCount++;
+    });
+    if (noResults) noResults.classList.toggle("d-none", visibleCount !== 0);
+  });
+})();
+</script>
+{% endblock %}
